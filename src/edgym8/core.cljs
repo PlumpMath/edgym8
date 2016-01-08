@@ -39,10 +39,9 @@
          (let [r (aget rgba-data pxl-idx)
                g (aget rgba-data (+ pxl-idx 1))
                b (aget rgba-data (+ pxl-idx 2))]
-           (.floor js/Math
-                   (+ (* r 0.2126)
-                      (* g  0.7152)
-                      (* 0.0722)))))))
+           (+ (* r 0.2126)
+              (* g  0.7152)
+              (* 0.0722))))))
 
 (def v-filter
   [-1 0 1
@@ -59,17 +58,18 @@
  (fn [db [_ img-data]]
    (let [w (:w img-data) h (:h img-data)
          mc-vals (rgba-to-grayscale (:pxls img-data))
-         edge-vals (for [y (range h)
-                         x (range w)]
-                    (let [idx (+ x (* y w))
-                          kernel (map #(get mc-vals % 0)
-                                      [(- idx w 1)     (- idx w) (+ (- idx w) 1)
-                                       (- idx 1)       idx       (+ idx 1)
-                                       (- (+ idx w) 1) (+ idx w) (+ idx w 1)])
-                          v-edge (reduce + (map * kernel v-filter))
-                          h-edge (reduce + (map * kernel v-filter))]
-                      (min (.floor js/Math (.sqrt js/Math (+ (* v-edge v-edge) (* h-edge h-edge)))) 255)
-                      ))]
+         edge-vals (map
+                    (fn [idx]
+                      (let [kernel (map #(get mc-vals % 0)
+                                        [(- idx w 1)     (- idx w) (+ (- idx w) 1)
+                                         (- idx 1)       idx       (+ idx 1)
+                                         (- (+ idx w) 1) (+ idx w) (+ idx w 1)])
+                            v-edge (reduce + (map * kernel v-filter))
+                            h-edge (reduce + (map * kernel v-filter))]
+                        (min (.floor js/Math
+                                     (.sqrt js/Math (+ (* v-edge v-edge) (* h-edge h-edge))))
+                             255)
+                        )) (range (count mc-vals)))]
      (assoc db
             :edge-data {:edge-vals edge-vals :w w :h h}))))
 
