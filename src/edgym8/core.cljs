@@ -18,7 +18,7 @@
 
 (register-handler
  :init-db
- (fn [_ _] {:edge-data nil :mode :ready}))
+ (fn [_ _] {:image-data nil :mode :ready}))
 
 (defn img-data-convert [data]
   (let [i (new js/Image)]
@@ -43,35 +43,13 @@
               (* g  0.7152)
               (* 0.0722))))))
 
-(def v-filter
-  [-1 0 1
-   -2 0 2
-   -1 0 1])
-
-(def h-filter
-  [1  2  1
-   0  0  0
-   -1 -2 -1])
-
 (register-handler
  :img-loaded
  (fn [db [_ img-data]]
    (let [w (:w img-data) h (:h img-data)
-         mc-vals (rgba-to-grayscale (:pxls img-data))
-         edge-vals (map
-                    (fn [idx]
-                      (let [kernel (map #(get mc-vals % 0)
-                                        [(- idx w 1)     (- idx w) (+ (- idx w) 1)
-                                         (- idx 1)       idx       (+ idx 1)
-                                         (- (+ idx w) 1) (+ idx w) (+ idx w 1)])
-                            v-edge (reduce + (map * kernel v-filter))
-                            h-edge (reduce + (map * kernel v-filter))]
-                        (min (.floor js/Math
-                                     (.sqrt js/Math (+ (* v-edge v-edge) (* h-edge h-edge))))
-                             255)
-                        )) (range (count mc-vals)))]
+         mc-vals (rgba-to-grayscale (:pxls img-data))]
      (assoc db
-            :edge-data {:edge-vals edge-vals :w w :h h}))))
+            :image-data {:mc-vals mc-vals :w w :h h}))))
 
 (register-handler
  :load-image
@@ -85,7 +63,7 @@
    (let [fr (new js/FileReader)]
      (set! (.-onload fr) (fn [e] (dispatch [:load-image (.. e -target -result)])))
      (.readAsDataURL fr f))
-   (assoc db :edge-data nil :mode :loading)))
+   (assoc db :image-data nil :mode :loading)))
 
 (register-handler
  :done
@@ -95,9 +73,9 @@
 ;;; Subscribers
 ;;; ------------------------------------------
 
-(register-sub :edge-data
+(register-sub :image-data
               (fn [db _]
-                (reaction (:edge-data @db))))
+                (reaction (:image-data @db))))
 
 (register-sub :mode
               (fn [db _]
@@ -106,25 +84,44 @@
 ;;; Components
 ;;; ------------------------------------------
 
+(def v-filter
+  [-1 0 1
+   -2 0 2
+   -1 0 1])
+
+(def h-filter
+  [1  2  1
+   0  0  0
+   -1 -2 -1])
+
 (defn update-canvas [this]
-  (when (-> this reagent/props :edge-vals)
-    (let [edge-data (-> this reagent/props)
+  (when (-> this reagent/props :mc-vals)
+    (let [image-data (-> this reagent/props)
+          mc-vals (:mc-vals image-data)
+          w (:w image-data) h (:h image-data)
           c (.getElementById js/document "edgecanvas")
           ctx (.getContext c "2d")]
-      (doseq [[idx v] (map-indexed vector (:edge-vals edge-data))]
-        (let [x (mod idx (:w edge-data))
-              y (/ idx (:w edge-data))
+      (doseq [[idx _] (map-indexed vector (:mc-vals image-data))]
+        (let [x (mod idx (:w image-data))
+              y (/ idx (:w image-data))
+              kernel (map #(get mc-vals % 0)
+                          [(- idx w 1)     (- idx w) (+ (- idx w) 1)
+                           (- idx 1)       idx       (+ idx 1)
+                           (- (+ idx w) 1) (+ idx w) (+ idx w 1)])
+              v-edge (reduce + (map * kernel v-filter))
+              h-edge (reduce + (map * kernel v-filter))
+              v (min (.floor js/Math (.sqrt js/Math (+ (* v-edge v-edge) (* h-edge h-edge)))) 255)
               col (str "rgba(" v "," v "," v ",255)")]
           (set! (.-fillStyle ctx) col)
           (.fillRect ctx x y 1 1)
           ))
       (dispatch [:done]))))
 
-(defn edge-canvas [edge-data]
+(defn edge-canvas [image-data]
   (reagent/create-class
    {:reagent-render
-    (fn [edge-data]
-      [:canvas#edgecanvas {:width (:w edge-data) :height (:h edge-data)}])
+    (fn [image-data]
+      [:canvas#edgecanvas {:width (:w image-data) :height (:h image-data)}])
     :component-did-mount update-canvas
     :component-did-update update-canvas}))
 
@@ -132,7 +129,7 @@
   (let [state (atom {:hovered false})
         set-hovered #(swap! state assoc :hovered %)
         mode (subscribe [:mode])
-        edge-data (subscribe [:edge-data])]
+        image-data (subscribe [:image-data])]
     (fn []
       (let [hovered (:hovered @state)]
         [:div
@@ -160,8 +157,8 @@
                          :line-height "16px"
                          :vertical-align "middle"}}
            (if (= @mode :ready) "DROP IMG HERE" "LOADING")]]
-         (when @edge-data
-           [edge-canvas @edge-data])]))))
+         (when @image-data
+           [edge-canvas @image-data])]))))
 
 ;;; Plumbing
 ;;; ------------------------------------------
