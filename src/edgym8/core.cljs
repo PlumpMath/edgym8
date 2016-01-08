@@ -170,7 +170,7 @@
   (fn render-root [] [:div [scaffold]]))
 
 (defn mount-root []
-  (dispatch [:init-db])
+  (dispatch-sync [:init-db])
   (reagent/render [#'application]
                   (js/document.getElementById "app")))
 
