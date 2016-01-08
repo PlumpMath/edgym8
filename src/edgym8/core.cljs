@@ -62,8 +62,8 @@
  (fn [db [_ f]]
    (let [fr (new js/FileReader)]
      (set! (.-onload fr) (fn [e] (dispatch [:load-image (.. e -target -result)])))
-     (.readAsDataURL fr f))
-   (assoc db :image-data nil :mode :loading)))
+     (js/setTimeout (fn [] (.readAsDataURL fr f)) 200)
+   (assoc db :image-data nil :mode :loading))))
 
 (register-handler
  :done
@@ -92,7 +92,7 @@
 (def h-filter
   [1  2  1
    0  0  0
-   -1 -2 -1])
+  -1 -2 -1])
 
 (defn update-canvas [this]
   (when (-> this reagent/props :mc-vals)
