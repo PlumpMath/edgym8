@@ -62,7 +62,7 @@
  (fn [db [_ f]]
    (let [fr (new js/FileReader)]
      (set! (.-onload fr) (fn [e] (dispatch [:load-image (.. e -target -result)])))
-     (js/setTimeout (fn [] (.readAsDataURL fr f)) 10)
+     (js/setTimeout (fn [] (.readAsDataURL fr f)) 100)
    (assoc db :image-data nil :mode :loading))))
 
 (register-handler
@@ -100,8 +100,10 @@
           mc-vals (:mc-vals image-data)
           w (:w image-data) h (:h image-data)
           c (.getElementById js/document "edgecanvas")
-          ctx (.getContext c "2d")]
-      (doseq [[idx _] (map-indexed vector (:mc-vals image-data))]
+          ctx (.getContext c "2d")
+          id (.createImageData ctx w h )
+          id-data (.-data id)]
+      (doseq [idx (range (* w h))]
         (let [x (mod idx (:w image-data))
               y (/ idx (:w image-data))
               kernel (map #(get mc-vals % 0)
@@ -110,11 +112,13 @@
                            (- (+ idx w) 1) (+ idx w) (+ idx w 1)])
               v-edge (reduce + (map * kernel v-filter))
               h-edge (reduce + (map * kernel v-filter))
-              v (min (.floor js/Math (.sqrt js/Math (+ (* v-edge v-edge) (* h-edge h-edge)))) 255)
-              col (str "rgba(" v "," v "," v ",255)")]
-          (set! (.-fillStyle ctx) col)
-          (.fillRect ctx x y 1 1)
+              v (min (.floor js/Math (.sqrt js/Math (+ (* v-edge v-edge) (* h-edge h-edge)))) 255)]
+          (aset id-data (* idx 4) v)
+          (aset id-data (+ (* idx 4) 1) v)
+          (aset id-data (+ (* idx 4) 2) v)
+          (aset id-data (+ (* idx 4) 3) 255)
           ))
+      (.putImageData ctx id 0 0)
       (dispatch [:done]))))
 
 (defn edge-canvas [image-data]
