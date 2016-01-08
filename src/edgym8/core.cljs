@@ -62,7 +62,7 @@
  (fn [db [_ f]]
    (let [fr (new js/FileReader)]
      (set! (.-onload fr) (fn [e] (dispatch [:load-image (.. e -target -result)])))
-     (js/setTimeout (fn [] (.readAsDataURL fr f)) 200)
+     (js/setTimeout (fn [] (.readAsDataURL fr f)) 10)
    (assoc db :image-data nil :mode :loading))))
 
 (register-handler
