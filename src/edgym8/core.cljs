@@ -32,8 +32,7 @@
           (set! (.-height c) h)
           (.drawImage ctx i 0 0)
           (dispatch [:img-loaded {:w w :h h :pxls (.-data (.getImageData ctx 0 0 w h))}]))))
-    (set! (.-src i) data)
-    ))
+    (set! (.-src i) data)))
 
 (defn rgba-to-grayscale [rgba-data]
   (vec (for [pxl-idx (range 0 (.-length rgba-data) 4)]
@@ -119,8 +118,7 @@
           (set! (.-fillStyle ctx) col)
           (.fillRect ctx x y 1 1)
           ))
-      (dispatch [:done])
-      )))
+      (dispatch [:done]))))
 
 (defn edge-canvas [edge-data]
   (reagent/create-class
