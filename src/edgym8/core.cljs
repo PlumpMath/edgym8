@@ -40,8 +40,8 @@
                g (aget rgba-data (+ pxl-idx 1))
                b (aget rgba-data (+ pxl-idx 2))]
            (+ (* r 0.2126)
-              (* g  0.7152)
-              (* 0.0722))))))
+              (* g 0.7152)
+              (* b 0.0722))))))
 
 (register-handler
  :img-loaded
